@@ -1,6 +1,6 @@
 [project]
 name = "kalshi-degen-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "Open-source MCP server for Kalshi Trade API v2 market research and trading"
 readme = "README.md"
 requires-python = ">=3.11"
