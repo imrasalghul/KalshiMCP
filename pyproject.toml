@@ -1,0 +1,17 @@
+[project]
+name = "kalshi-degen-mcp"
+version = "0.1.0"
+description = "Open-source MCP server for Kalshi Trade API v2 market research and trading"
+requires-python = ">=3.11"
+dependencies = ["httpx>=0.27", "cryptography>=42", "mcp>=1.2,<2"]
+
+[project.scripts]
+kalshi-degen-mcp = "kalshi_mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["kalshi_mcp"]
+include = ["kalshi_mcp/openapi.yaml"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
