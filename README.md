@@ -1,6 +1,6 @@
 # Kalshi MCP Server
 
-An open-source [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for Kalshi’s Trade API v2. It gives MCP clients a practical interface for researching markets, reading an account, and managing orders with Kalshi’s RSA-PSS authentication.
+An open-source [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for Kalshi’s Trade API v2. It gives MCP clients a practical interface for researching markets, reading an account, and managing orders with RSA-PSS or Ed25519 authentication.
 
 > **Important:** This server can place and cancel real orders. It defaults to Kalshi’s **production** environment; set `KALSHI_ENV=demo` explicitly for demo trading. Review the code, configure conservative limits, and test with demo credentials before using production credentials.
 
@@ -29,7 +29,7 @@ The `kalshi_endpoint` tool also exposes the validated operations from the bundle
 ## Requirements
 
 - Python 3.11 or newer
-- A Kalshi API key and RSA private key
+- A Kalshi API key and Ed25519 private key
 - An MCP-compatible client
 
 ## Installation
@@ -76,7 +76,7 @@ KALSHI_ENV=demo
 Optional settings:
 
 - `KALSHI_BASE_URL` — override the selected API base URL.
-- `KALSHI_PRIVATE_KEY_BASE64` — base64-encoded PEM RSA private key; this avoids requiring the MCP host to provide filesystem access.
+- `KALSHI_PRIVATE_KEY_BASE64` — base64-encoded PEM Ed25519 private key; this avoids requiring the MCP host to provide filesystem access.
 - `KALSHI_MAX_ORDER_CONTRACTS` — maximum contracts per order.
 - `KALSHI_MAX_ORDER_CENTS` — maximum per-order notional in cents.
 - `KALSHI_DAILY_CONTRACT_LIMIT` — intended daily contract ceiling.

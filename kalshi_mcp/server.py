@@ -6,14 +6,15 @@ import re
 import base64
 import binascii
 from pathlib import Path
+from urllib.parse import urlparse
 from decimal import Decimal, InvalidOperation
 from datetime import date, timezone, datetime
 from typing import Any
 
 import httpx
 
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
 from jsonschema import Draft7Validator, RefResolver
 from mcp.server.fastmcp import FastMCP
 from .endpoint_catalog import ENDPOINTS, ENDPOINT_METADATA, SPEC
@@ -55,7 +56,7 @@ def _requires_auth(endpoint: str, method: str | None = None) -> bool:
         return bool(security)
     return not endpoint.startswith(PUBLIC_PREFIXES)
 
-DEMO = "https://demo-api.kalshi.co/trade-api/v2"
+DEMO = "https://external-api.demo.kalshi.co/trade-api/v2"
 PROD = "https://external-api.kalshi.com/trade-api/v2"
 
 
@@ -73,23 +74,28 @@ def _auth_headers(method: str, path: str) -> dict[str, str]:
     key_id = os.getenv("KALSHI_API_KEY_ID")
     key_b64 = os.getenv("KALSHI_PRIVATE_KEY_BASE64")
     key_path = os.getenv("KALSHI_PRIVATE_KEY_PATH")
-    if not key_id or not key_b64:
-        raise RuntimeError("KALSHI_API_KEY_ID and KALSHI_PRIVATE_KEY_BASE64 are required")
+    if not key_id or (not key_b64 and not key_path):
+        raise RuntimeError("KALSHI_API_KEY_ID and a private key are required")
     ts = str(int(time.time() * 1000))
-    message = (ts + method.upper() + path).encode()
+    message = (ts + method.upper() + path.split("?", 1)[0]).encode()
     try:
-        key_bytes = base64.b64decode(key_b64, validate=True)
-    except (ValueError, binascii.Error) as exc:
-        raise RuntimeError("KALSHI_PRIVATE_KEY_BASE64 must be valid base64") from exc
+        if key_b64:
+            key_bytes = base64.b64decode(key_b64, validate=True)
+        else:
+            key_bytes = Path(key_path).read_bytes()
+    except (ValueError, binascii.Error, OSError) as exc:
+        raise RuntimeError("private key must be valid base64 or a readable PEM file") from exc
     private = serialization.load_pem_private_key(key_bytes, password=None)
-    sig = private.sign(message, padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.DIGEST_LENGTH), hashes.SHA256())
-    import base64
+    if isinstance(private, ed25519.Ed25519PrivateKey):
+        sig = private.sign(message)
+    else:
+        raise RuntimeError("KALSHI private key must be an Ed25519 PEM key")
     return {"KALSHI-ACCESS-KEY": key_id, "KALSHI-ACCESS-TIMESTAMP": ts, "KALSHI-ACCESS-SIGNATURE": base64.b64encode(sig).decode()}
 
 
 def _request(method: str, endpoint: str, *, params: dict[str, Any] | None = None, body: Any = None, auth: bool = False) -> dict[str, Any]:
     url = _base_url() + endpoint
-    headers = _auth_headers(method, endpoint) if auth else {}
+    headers = _auth_headers(method, urlparse(url).path) if auth else {}
     with httpx.Client(timeout=30) as client:
         r = client.request(method, url, params=params, json=body, headers=headers)
     r.raise_for_status()
